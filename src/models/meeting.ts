@@ -1,5 +1,6 @@
 import { Model, Schema, Document, model } from 'mongoose'
-import { body } from 'express-validator'
+import { body, query } from 'express-validator'
+import { getIsValidEmail } from '../utils'
 
 interface IMeeting {
   hostEmail: string
@@ -47,23 +48,21 @@ meetingSchema.statics.build = (attr: IMeeting) => {
 
 const Meeting = model<IMeetingDoc, IMeetingModelInterface>('Meeting', meetingSchema)
 
-// TODO: extract isEmail somehow from express-validator
-const validEmailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-
 const validateMeeting = [
   body('hostEmail', 'Host\'s email is invalid').isEmail(),
   body('name', 'Name is empty').notEmpty(),
+  body('dateTime', 'Date time is required').notEmpty(),
   body('attendeeEmailsList')
     .isArray()
     .withMessage('Attendee emails is not a list!')
     .bail()
     .custom((emailsList: string[]) => {
-      const invalidEmails = emailsList.filter(email => !validEmailRegex.test(email))
+      const invalidEmails = emailsList.filter(email => !getIsValidEmail(email))
       if (invalidEmails.length > 0) {
         return Promise.reject(`Attendee emails list contains invalid emails: ${invalidEmails.join()}`)
       }
       return Promise.resolve()
-    })
+    }),
 ]
 
 export { Meeting, validateMeeting }
